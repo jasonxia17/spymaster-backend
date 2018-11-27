@@ -59,7 +59,6 @@ def text_detection(file):
 		"feature_fusion/Conv_7/Sigmoid",
 		"feature_fusion/concat_3"]
 
-	print("[INFO] loading EAST text detector...")
 	net = cv2.dnn.readNet("frozen_east_text_detection.pb")
 
 
@@ -103,19 +102,6 @@ def text_detection(file):
 	words = []
 
 	for ((startX, startY, endX, endY), text) in results:
-
-		print("OCR TEXT")
-		print("========")
-		print("{}\n".format(text))
-
 		text = "".join([c if ord(c) < 128 else "" for c in text]).strip()
 		words.append(text)
-		output = orig.copy()
-		cv2.rectangle(output, (startX, startY), (endX, endY),
-					  (0, 0, 255), 2)
-		cv2.putText(output, text, (startX, startY - 20),
-					cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
-
-		cv2.imshow("Text Detection", output)
-		cv2.waitKey(0)
 	return words
