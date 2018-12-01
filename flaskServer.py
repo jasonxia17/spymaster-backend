@@ -8,10 +8,10 @@ def handleClueRequest():
     import time
     t0 = time.time()
     jsonContent = request.get_json()
-    print(jsonContent)
-    result = getClues(jsonContent['words'], jsonContent['labels'], jsonContent['team'])
-    mostHintedAt = max([i for i in range(len(result)) if result[i]])
-    print(mostHintedAt)
+    result = getClues(jsonContent['wordObjectList'], jsonContent['teamName'])
+
+    # mostHintedAt = max([i for i in range(len(result)) if result[i]])
+    # print(mostHintedAt)
     print(time.time() - t0)
     return jsonify(result)
     # placeholder = {
