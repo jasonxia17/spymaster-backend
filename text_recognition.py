@@ -2,6 +2,27 @@ from imutils.object_detection import non_max_suppression
 import numpy as np
 import pytesseract
 import cv2
+from gensim.models import KeyedVectors
+filename = 'GoogleNews-vectors-negative300.bin.gz'
+model = KeyedVectors.load_word2vec_format(filename, binary=True, limit=100000)
+wordSet = model.wv.vocab.keys()
+def check(word, wordSet):
+    flag = True
+    if word.lower() not in wordSet:
+        flag = False
+    s = word[0]
+    s += word[1:].lower()
+    if s in wordSet:
+        flag = True
+    for c in word:
+        if c.islower():
+            flag = False
+        if c.isdigit():
+            flag = False
+        if not flag:
+            break
+    return flag
+
 def text_detection(file):
 
 	def decode_predictions(scores, geometry):
@@ -81,8 +102,8 @@ def text_detection(file):
 		endY = int(endY * rH)
 
 
-		dX = int((endX - startX) * 0.07)
-		dY = int((endY - startY) * 0.07)
+		dX = int((endX - startX) * 0.1)
+		dY = int((endY - startY) * 0.1)
 
 
 		startX = max(0, startX - dX)
@@ -100,8 +121,24 @@ def text_detection(file):
 
 	results = sorted(results, key=lambda r: r[0][1])
 	words = []
-
+	word = {}
+	count = 0
+	x = []
 	for ((startX, startY, endX, endY), text) in results:
-		text = "".join([c if ord(c) < 128 else "" for c in text]).strip()
-		words.append(text)
+		text = "".join([c if ord(c) < 123 else "" for c in text]).strip()
+		if not check(text, wordSet):
+			continue
+		if startX in word.keys():
+			startX+=2
+		word[startX] = text
+		if count % 5 == 0:
+			x.append([])
+		x[int(count / 5)].append(startX)
+		count+=1
+	for i in range(0, len(x)):
+		x[i].sort()
+	for i in range(0, len(x)):
+		words.append([])
+		for j in range(0, len(x[i])):
+			words[i].append(word[x[i][j]])
 	return words
