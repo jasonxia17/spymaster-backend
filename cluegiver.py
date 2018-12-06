@@ -20,24 +20,32 @@ def clueSearch(potentialClues, goodWords, badWords, neutralWords, assassin):
     #                         for clue in potentialClues])
     
     cluesByNumHintedAt = [[] for _ in range(10)]
-
+    clueObjectList = []
     for clue in potentialClues:
         wordsHintedAt = getWordsHintedAt(clue, goodWords, badWords, neutralWords, assassin)
         if len(wordsHintedAt) < 2:
             continue
         
         hintRatings = [model.similarity(clue, hintedAt) for hintedAt in wordsHintedAt]
-        cluesByNumHintedAt[len(wordsHintedAt)].append({
+        clueObjectList.append({
             'clue': clue,
             'wordsHintedAt': wordsHintedAt,
-            'rating': float(sum(hintRatings)/len(hintRatings)),
+            'rating': float(sum(hintRatings)),
         })
-    
-    for clueList in cluesByNumHintedAt:
-        clueList.sort(key=itemgetter('rating'), reverse=True)
-    for i in range(len(cluesByNumHintedAt)):
-        cluesByNumHintedAt[i] = cluesByNumHintedAt[i][:6]
-    return cluesByNumHintedAt
+    #     cluesByNumHintedAt[len(wordsHintedAt)].append({
+    #         'clue': clue,
+    #         'wordsHintedAt': wordsHintedAt,
+    #         'rating': float(sum(hintRatings)/len(hintRatings)),
+    #     })
+    #
+    # for clueList in cluesByNumHintedAt:
+    #     clueList.sort(key=itemgetter('rating'), reverse=True)
+    # for i in range(len(cluesByNumHintedAt)):
+    #     cluesByNumHintedAt[i] = cluesByNumHintedAt[i][:6]
+    # return cluesByNumHintedAt
+
+    clueObjectList.sort(key=itemgetter('rating'), reverse=True)
+    return clueObjectList[:10]
 
 def getClues(wordObjectList, team):
     redWords = []
