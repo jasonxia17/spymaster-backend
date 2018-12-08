@@ -8,22 +8,12 @@ def handleClueRequest():
     import time
     t0 = time.time()
     jsonContent = request.get_json()
-    result = getClues(jsonContent['wordObjectList'], jsonContent['teamName'])
-
-    # mostHintedAt = max([i for i in range(len(result)) if result[i]])
-    # print(mostHintedAt)
-    print(time.time() - t0)
-    return jsonify(result)
-    # placeholder = {
-    #     "clue": "sky",
-    #     "rating": 0.891205757856369,
-    #     "wordsHintedAt": [
-    #         "air",
-    #         "eye",
-    #         "Jupiter"
-    #     ]
-    # }
-    # return jsonify(placeholder)
+    try:
+        result = getClues(jsonContent['wordObjectList'], jsonContent['teamName'])
+        print(time.time() - t0)
+        return jsonify(result)
+    except ValueError as err:
+        return jsonify({'err': str(err)})
 
 @app.route('/<name>', methods=['GET', 'POST'])
 def hello_name(name):

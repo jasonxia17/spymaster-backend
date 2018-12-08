@@ -50,6 +50,7 @@ def clueSearch(potentialClues, goodWords, badWords, neutralWords, assassins):
     # return cluesByNumHintedAt
 
     clueObjectList.sort(key=itemgetter('rating'), reverse=True)
+    clueObjectList.sort(key=lambda wordObject: len(wordObject['wordsHintedAt']), reverse=True)
     return clueObjectList[:10]
 
 def getClues(wordObjectList, team):
@@ -66,7 +67,7 @@ def getClues(wordObjectList, team):
         elif word.title() in model:
             word = word.title()
         else:
-            raise ValueError('Invalid Word')
+            raise ValueError('Invalid Word: ' + word)
 
         if wordObject['stillOnBoard']:
             label = wordObject['label']
