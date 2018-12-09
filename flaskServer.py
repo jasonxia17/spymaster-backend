@@ -19,5 +19,9 @@ def handleClueRequest():
 def hello_name(name):
     return name + ' is not a valid route'
 
+@app.route('/', methods=['GET', 'POST'])
+def hello_world():
+    return 'The site is up and running! You can make a post request to the server now :)'
+
 if __name__ == '__main__':
    app.run(host='0.0.0.0')

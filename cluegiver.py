@@ -1,7 +1,7 @@
 from gensim.models import KeyedVectors
 from operator import itemgetter
-filename = 'GoogleNews-vectors-negative300.bin.gz'
-model = KeyedVectors.load_word2vec_format(filename, binary=True, limit=200000)
+filename = 'codenamesModel.bin.gz'
+model = KeyedVectors.load_word2vec_format(filename, binary=True)
 
 def getWordsHintedAt(clue, goodWords, badWords, neutralWords, assassins):
     # similar to scoring in curling
