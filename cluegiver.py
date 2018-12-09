@@ -86,7 +86,7 @@ def getClues(wordObjectList, team):
     print(assassins)
     print(team)
 
-    potentialClues = list(model.vocab.keys())[:10000]
+    potentialClues = list(model.vocab.keys())[:3000]
 
     if team == 'red':
         searchResults = clueSearch(potentialClues, redWords, blueWords, neutralWords, assassins)
