@@ -94,6 +94,7 @@ def getClues(wordObjectList, team):
         searchResults = clueSearch(potentialClues, blueWords, redWords, neutralWords, assassins)
     return searchResults
 
-# while True:
-#     word = input()
-#     print(word in model)
+if __name__ == '__main__':
+    while True:
+        word = input()
+        print(word in model)
