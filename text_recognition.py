@@ -130,8 +130,6 @@ def text_detection(file):
 	x = []
 	for ((startX, startY, endX, endY), text) in results:
 		text = "".join([c if ord(c) < 123 else "" for c in text]).strip()
-		if not check(text, wordSet):
-			continue
 		if startX in word.keys():
 			startX+=2
 		word[startX] = text
