@@ -2,6 +2,7 @@ from imutils.object_detection import non_max_suppression
 import numpy as np
 import pytesseract
 import cv2
+from PIL import Image
 from gensim.models import KeyedVectors
 filename = 'GoogleNews-vectors-negative300.bin.gz'
 model = KeyedVectors.load_word2vec_format(filename, binary=True, limit=100000)
@@ -112,12 +113,15 @@ def text_detection(file):
 		endY = min(origH, endY + (dY * 2))
 
 		roi = orig[startY:endY, startX:endX]
-
-
-		config = ("-l eng --oem 1 --psm 7")
-		text = pytesseract.image_to_string(roi, config=config)
-
-		results.append(((startX, startY, endX, endY), text))
+		f = Image.open(file)
+		f = f.convert("RGBA")
+		pixdata = f.load()
+		pixel1 = pixdata[startX,startY]
+		item1, item2, item3, item4 = pixel1
+		if (item4 > 250):
+			config = ("-l eng --oem 1 --psm 7")
+			text = pytesseract.image_to_string(roi, config=config)
+			results.append(((startX, startY, endX, endY), text))
 
 	results = sorted(results, key=lambda r: r[0][1])
 	words = []
@@ -142,3 +146,4 @@ def text_detection(file):
 		for j in range(0, len(x[i])):
 			words[i].append(word[x[i][j]])
 	return words
+print(text_detection("example.png"))

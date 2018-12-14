@@ -8,9 +8,9 @@ api = Api(app)
 class Board(Resource):
     def post(self):
         im_json = request.get_json()
-        with open("example.jpg", "wb") as output:
+        with open("example.png", "wb") as output:
             output.write(base64.b64decode(im_json["imageBase64"]))
-        list_raw = text_detection("example.jpg")
+        list_raw = text_detection("example.png")
         l = []
         for i in range(len(list_raw)):
             for j in range(len(list_raw[i])):
