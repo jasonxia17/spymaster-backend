@@ -2,103 +2,63 @@ import numpy as np
 import pytesseract
 import cv2
 from PIL import Image
+from autocorrect import spell
 
 def getWord(roi):
     roiBW = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
     _, roiThresh = cv2.threshold(roiBW, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    Image.fromarray(roiThresh).save('croppedImg.jpg')
+    text = pytesseract.image_to_string(roiThresh, lang='eng')
 
-    # config = "-l eng --oem 1 --psm 8"
-    text = pytesseract.image_to_string('croppedImg.jpg', lang='eng')
-    if not text:
-        _, roiThresh = cv2.threshold(roiBW, 111, 255, cv2.THRESH_BINARY)
-        Image.fromarray(roiThresh).save('croppedImg.jpg')
-        text = pytesseract.image_to_string('croppedImg.jpg', lang='eng')
+    if not text: # second try using different threshold
+        _, roiThresh = cv2.threshold(roiBW, 128, 255, cv2.THRESH_BINARY)
+        text = pytesseract.image_to_string(roiThresh, lang='eng')
+        print('SUCCESS ON 2ND TRY FOR:', text)
         if not text:
-            return ''
+            print('BIG FAIL POOPOO')
+            return 'COULD NOT PARSE'
 
-    text = max(text.split('\n'), key=lambda line: len(line))
+    if text != spell(text):
+        print('AUTOCORRECT REQUIRED ON', text)
 
-    from string import ascii_letters
-    tmp = text
-    text = ''
-    for letter in tmp:
-        if letter in ascii_letters + ' ':
-            text += letter
-    text = text.strip()
-    return text
+    return spell(text)
 
-def getBoxes(unmodifiedImg):
-    print('avg pixel:', np.average(np.average(unmodifiedImg, axis=0), axis=0))
+def insideOfRect(rectIn, rectOut):
+    xi, yi, wi, hi = rectIn
+    xo, yo, wo, ho = rectOut
 
-    int16Img = unmodifiedImg.astype('int16')
-    # necessary to avoid overflow or something
-    redBlueDiff = (int16Img[:, :, 0] - int16Img[:, :, 2])
+    return xi > xo and yi > yo and xi + wi < xo + wo and yi + hi < yo + ho
 
-    # get the fourth-percentile of red-blue differences, approximately what a "white" pixel would have
-    notBlack = np.sum(unmodifiedImg, axis=2) > 150
-    flattenedDiffNoBlack = np.extract(notBlack, redBlueDiff)
-    flattenedDiffNoBlack.sort()
-    # percentile = 0.04 if len(flattenedDiffNoBlack) > resizeH*resizeW/2 else 0.15
-    percentile = 0.04
-    targetDiff = flattenedDiffNoBlack[int(len(flattenedDiffNoBlack) * percentile)] + 14
-    print('threshold', targetDiff)
+def isAnOuterRect(rect, rectList):
+    for rect2 in rectList:
+        if insideOfRect(rect, rect2):
+            return False
+    return True
 
-    ret, boxImg = cv2.threshold(redBlueDiff, targetDiff, 255, cv2.THRESH_BINARY)
-    boxImg = boxImg.astype('uint8')
-    Image.fromarray(boxImg).show()
-
-    _, contours, _ = cv2.findContours(boxImg.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    imgWithContours = cv2.drawContours(unmodifiedImg.copy(), contours, -1, (255, 0, 0), 10)
-    Image.fromarray(imgWithContours).show()
-
-    imgWithTiltedRects = unmodifiedImg.copy()
-    boundingRects = []
-
-    for cnt in contours:
-        rect = cv2.minAreaRect(cnt)
-        box = cv2.boxPoints(rect)
-        box = np.int0(box)
-        _, (w, h), _ = rect
-        h, w = sorted([w, h])  # make sure they're actually referring to the correct thing lmao
-        # x, y, w, h = cv2.boundingRect(cnt)
-        if 30 < h < 150 and 200 < w < 500:
-            imgWithTiltedRects = cv2.drawContours(imgWithTiltedRects, [box], 0, (0, 0, 255), 10)
-            rect = cv2.boundingRect(cnt)
-            if getWord(rect, unmodifiedImg):
-                boundingRects.append(rect)
-
-    imgWithAlignedRects = unmodifiedImg.copy()
-    for rect in boundingRects:
-        x, y, w, h = rect
-        imgWithAlignedRects = cv2.rectangle(imgWithAlignedRects, (x, y), (x + w, y + h), (0, 255, 0), 10)
-    Image.fromarray(imgWithAlignedRects).show()
-
-    boundingRects.sort(key=lambda xywh: xywh[1])
-    gridOfRects = [boundingRects[i : i + 5] for i in range(0, 25, 5)]
-    print(gridOfRects)
-    for row in gridOfRects:
-        row.sort(key=lambda xywh: xywh[0])
-    boundingRects = []
-    for row in gridOfRects:
-        boundingRects += row
-    wordList = list(map(lambda box: getWordFUNCTIONCHANGED(box, unmodifiedImg), boundingRects))
-    print(wordList)
-
-    print('numOfBoundingRects', len(boundingRects))
-    Image.fromarray(imgWithTiltedRects).show()
+def removeOutlierRects(rectList):
+    maxDeviation = [320, 200]
+    for xOrY in (0, 1):
+        for reverse in (False, True):
+            rectList.sort(key=lambda rect: rect[xOrY], reverse=reverse)
+            while abs(rectList[0][xOrY] - rectList[3][xOrY]) > maxDeviation[xOrY]:
+                rectList.pop(0)
+    return rectList
 
 def isolateCards(imageArr):
-    # imageBlur = cv2.bilateralFilter(imageArr, 20, 30, 3)
-    imageBlur = cv2.blur(imageArr, (30, 4))
+    imageBW = cv2.cvtColor(imageArr, cv2.COLOR_RGB2GRAY)
+    print('TOP-LEFT BRIGHTNESS', imageBW[0][0])
 
-    imageBW = cv2.cvtColor(imageBlur, cv2.COLOR_RGB2GRAY)
+    bias = 3 if imageBW[0][0] > 140 else -8
+    # Subtracting higher bias --> more dark areas; this is needed in a brighter image
     imageThresh = cv2.adaptiveThreshold(imageBW, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                              cv2.THRESH_BINARY_INV, 201, -8)
+                                        cv2.THRESH_BINARY, 201, bias)
+    if imageBW[0][0] > 140:
+        # imageThresh = cv2.erode(imageThresh, np.ones((5, 5), np.uint8), iterations=3)
+        # cuz you gotta deal with hardwood floors and other poop like that
+        # could also use morphologyEx (erosion followed by dilation, but seems like erode works better)
+        imageThresh = cv2.morphologyEx(imageThresh, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8), iterations=3)
+
     _, contours, _ = cv2.findContours(imageThresh.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    imgWithRects = imageArr.copy()
     rectList = []
 
     for cnt in contours:
@@ -106,18 +66,26 @@ def isolateCards(imageArr):
         x, y, w, h = rect
         if 120 < h < 400 and 240 < w < 600 and 1 < w/h < 3:
             rectList.append(rect)
-    rectList.sort(key=lambda xywh: xywh[3], reverse=True)
-    rectList = rectList[:25]
 
+    rectList = list(filter(lambda rect: isAnOuterRect(rect, rectList), rectList))
+
+    rectList = removeOutlierRects(rectList)
+
+    imgWithRects = imageArr.copy()
     for x, y, w, h in rectList:
-        cv2.rectangle(imgWithRects, (x, y), (x + w, y + h), (0, 255, 0), 10)
+        cv2.rectangle(imgWithRects, (x, y), (x + w, y + h), (0, 255, 0), 30)
 
-    # Image.fromarray(imgArr).show()
-    # Image.fromarray(imageBlur).show()
+    # Image.fromarray(imageArr).show()
+    # Image.fromarray(imageBW).show()
     # Image.fromarray(imageThresh).show()
     # imgWithContours = cv2.drawContours(imageArr.copy(), contours, -1, (255, 0, 0), 10)
     # Image.fromarray(imgWithContours).show()
     # Image.fromarray(imgWithRects).show()
+
+    if len(rectList) != 25:
+        print("UH OH, something went wrong")
+        Image.fromarray(imgWithRects).show()
+
     return rectList
 
 def sortRects(boundingRects):
@@ -137,37 +105,28 @@ def extractWordFromCard(box, unmodifiedImg):
     roi = roi[115:165, 50:250]
     return roi.copy()
 
+def imageToWordList(filename):
+    basewidth = 2560
+    doNotUseThisImg = Image.open(filename)
+    wpercent = (basewidth / float(doNotUseThisImg.size[0]))
+    hsize = int((float(doNotUseThisImg.size[1]) * float(wpercent)))
+    imgArr = np.array(doNotUseThisImg.resize((basewidth, hsize), Image.ANTIALIAS))
+
+    borderSize = 30
+    imgArr = cv2.copyMakeBorder(imgArr, borderSize, borderSize, borderSize, borderSize,
+                                cv2.BORDER_REPLICATE)
+    rectangles = sortRects(isolateCards(imgArr))
+
+    wordSnippets = map(lambda rect: extractWordFromCard(rect, imgArr), rectangles)
+    wordList = list(map(getWord, wordSnippets))
+    for i in range(5):
+        print(wordList[5 * i:5 * i + 5])
+    return wordList
+
 if __name__ == '__main__':
-    for i in range(1, 15):
-        import time
-        t0 = time.time()
+    for i in range(14, 15):
         filename = 'testImages/example' + str(i) + '.jpg'
         print('TEST IMAGE', i)
+        imageToWordList(filename)
+        print()
 
-        basewidth = 2560
-        doNotUseThisImg = Image.open(filename)
-        wpercent = (basewidth / float(doNotUseThisImg.size[0]))
-        hsize = int((float(doNotUseThisImg.size[1]) * float(wpercent)))
-        imgArr = np.array(doNotUseThisImg.resize((basewidth, hsize), Image.ANTIALIAS))
-
-        borderSize = 30
-        imgArr = cv2.copyMakeBorder(imgArr, borderSize, borderSize, borderSize, borderSize, cv2.BORDER_REPLICATE)
-
-        rectangles = sortRects(isolateCards(imgArr))
-        wordSnippets = map(lambda rect: extractWordFromCard(rect, imgArr), rectangles)
-        wordList = list(map(getWord, wordSnippets))
-        for i in range(5):
-            print(wordList[5*i:5*i+5])
-        print(time.time() - t0)
-
-
-
-        # imageArr = np.array(Image.open(filename).resize((2000, 2400), Image.ANTIALIAS))
-        # imageArr[np.where((imageArr < [120, 100, 100]).any(axis=2))] = [160, 140, 110]
-        #
-        # image = Image.fromarray(imageArr)
-        # contrast = ImageEnhance.Contrast(image)
-        # # contrast.enhance(3).show()
-        # # image.show()
-        # Image.open(filename).show()
-        # ImageEnhance.Sharpness(Image.open(filename)).enhance(10).show()
