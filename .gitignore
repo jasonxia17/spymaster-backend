@@ -5,3 +5,6 @@ GoogleNews-vectors*
 gameWords.txt
 cluesGenerated.txt
 .idea*
+venv
+testImages
+croppedImg.jpg
