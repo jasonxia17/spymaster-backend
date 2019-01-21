@@ -7,6 +7,5 @@ cluesGenerated.txt
 .idea*
 venv
 testImages
-croppedImg.jpg
-badAttempts.py
+requestPhoto.jpg
 output

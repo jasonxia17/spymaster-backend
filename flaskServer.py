@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from cluegiver import getClues
 import base64
-from text_recognition import text_detection
+from boxRecognition import imageToWordList
 
 app = Flask(__name__)
 
@@ -22,12 +22,8 @@ def handlePhotoRequest():
     im_json = request.get_json()
     with open("requestPhoto.jpg", "wb") as output:
         output.write(base64.b64decode(im_json["imageBase64"]))
-    raw2dArray = text_detection("requestPhoto.jpg")
-    returnList = []
-    for i in range(len(raw2dArray)):
-        for j in range(len(raw2dArray[i])):
-            returnList.append(raw2dArray[i][j])
-    return jsonify(returnList)
+    wordList = imageToWordList("requestPhoto.jpg")
+    return jsonify(wordList)
 
 @app.route('/<name>', methods=['GET', 'POST'])
 def hello_name(name):

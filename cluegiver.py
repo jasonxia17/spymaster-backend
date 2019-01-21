@@ -80,11 +80,11 @@ def getClues(wordObjectList, team):
             elif label == 'A':
                 assassins.append(word)
 
-    print(redWords)
-    print(blueWords)
-    print(neutralWords)
-    print(assassins)
-    print(team)
+    print('red', redWords)
+    print('blue', blueWords)
+    print('neutral', neutralWords)
+    print('assasins', assassins)
+    print('team', team)
 
     potentialClues = list(model.vocab.keys())[:10000]
 
