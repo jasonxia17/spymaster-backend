@@ -8,6 +8,7 @@ def getWord(roi):
     roiBW = cv2.cvtColor(roi, cv2.COLOR_RGB2GRAY)
     _, roiThresh = cv2.threshold(roiBW, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     text = pytesseract.image_to_string(roiThresh, lang='eng')
+    Image.fromarray(roiThresh).save('output/6word.jpg')
 
     if not text: # second try using different threshold
         _, roiThresh = cv2.threshold(roiBW, 128, 255, cv2.THRESH_BINARY)
@@ -51,6 +52,7 @@ def isolateCards(imageArr):
     # Subtracting higher bias --> more dark areas; this is needed in a brighter image
     imageThresh = cv2.adaptiveThreshold(imageBW, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                         cv2.THRESH_BINARY, 201, bias)
+
     if imageBW[0][0] > 140:
         # imageThresh = cv2.erode(imageThresh, np.ones((5, 5), np.uint8), iterations=3)
         # cuz you gotta deal with hardwood floors and other poop like that
@@ -75,12 +77,12 @@ def isolateCards(imageArr):
     for x, y, w, h in rectList:
         cv2.rectangle(imgWithRects, (x, y), (x + w, y + h), (0, 255, 0), 30)
 
-    # Image.fromarray(imageArr).show()
-    # Image.fromarray(imageBW).show()
-    # Image.fromarray(imageThresh).show()
-    # imgWithContours = cv2.drawContours(imageArr.copy(), contours, -1, (255, 0, 0), 10)
-    # Image.fromarray(imgWithContours).show()
-    # Image.fromarray(imgWithRects).show()
+    Image.fromarray(imageArr).save('output/0original.jpg')
+    Image.fromarray(imageBW).save('output/1blackwhite.jpg')
+    Image.fromarray(imageThresh).save('output/2eroded.jpg')
+    imgWithContours = cv2.drawContours(imageThresh.copy(), contours, -1, (255, 0, 0), 10)
+    Image.fromarray(imgWithContours).save('output/3contours.jpg')
+    Image.fromarray(imgWithRects).save('output/4boxes.jpg')
 
     if len(rectList) != 25:
         print("UH OH, something went wrong")
@@ -102,6 +104,7 @@ def extractWordFromCard(box, unmodifiedImg):
     x, y, w, h = box
     roi = unmodifiedImg[y: y + h, x: x + w]
     roi = cv2.resize(roi, (300, 200), interpolation=cv2.INTER_CUBIC)
+    Image.fromarray(roi).save('output/5card.jpg')
     roi = roi[115:165, 50:250]
     return roi.copy()
 
